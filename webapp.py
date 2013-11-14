@@ -5,9 +5,9 @@ from flask import Flask, render_template, send_from_directory
 # initialization
 app = Flask(__name__)
 
-app.config.update(
-    DEBUG = True,
-)
+#app.config.update(
+#    DEBUG = True,
+#)
 
 # controllers
 @app.route('/favicon.ico')
