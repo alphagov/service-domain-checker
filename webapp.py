@@ -2,7 +2,6 @@
 import gevent
 import os
 import re
-import threading
 import urllib2
 import urlparse
 
@@ -39,32 +38,6 @@ def index():
 def check(slug):
     return service_check("/%s" % slug)
 
-# Main logic process
-
-def service_check(slug):
-
-    output = "<table>"
-    result, link = find_link_from_slug(slug)
-    if result:
-        output += format_output(result, "Start page (https://www.gov.uk%s) links to the service (%s)" % (slug, link))
-        result, domain = extract_service_domain_from_link(link)
-        if result:
-            check1 = gevent.spawn(check_bare_ssl_domain_redirects_to_slug, domain, slug)
-            check2 = gevent.spawn(check_listening_on_http, domain)
-            check3 = gevent.spawn(check_for_HSTS_header,link)
-            check4 = gevent.spawn(check_for_robots_txt,domain)
-            check5 = gevent.spawn(check_cookies,link)
-            checks = [check1, check2, check3, check4, check5]
-            gevent.joinall(checks)
-            for check in checks:
-                output += "%s\n" % check.value
-        else:
-            output += format_output(result, domain)
-    else:
-        output += format_output(result, link)
-    output += "</table>"
-    return output
-
 
 # Helper functions
 def extract_service_domain_from_link(link):
@@ -89,7 +62,6 @@ def find_link_from_slug(govuk_slug):
         return False, "Could not find 'Start now' link on https://www.gov.uk%s" % govuk_slug
 
 
-
 def header_dict(headers):
     dict = {}
     for header in headers:
@@ -99,10 +71,7 @@ def header_dict(headers):
 
 
 def format_output(status, message):
-    if status:
-        return "<tr><td><span style='color: green;'>PASS</span></td><td>%s</td></tr>" % message
-    else:
-        return "<tr><td><span style='color: red;'>FAIL</span></td><td>%s</td></tr>" % message
+        return render_template('check.html', status=status, message=message)
 
 
 # Service checks
@@ -113,22 +82,22 @@ def check_bare_ssl_domain_redirects_to_slug(domain, slug):
     location = url.geturl()
     correct_location = "https://www.gov.uk%s" % slug
     if location == correct_location:
-        return format_output(True, "The bare service domain (%s) should redirect back to the GOV.UK start page (%s)" % (bare_domain, correct_location))
+        return True, "The bare service domain (%s) should redirect back to the GOV.UK start page (%s)" % (bare_domain, correct_location)
     else:
-        return format_output(False, "The bare service domain (%s) should redirect back to the GOV.UK start page (%s)" % (bare_domain, correct_location))
+        return False, "The bare service domain (%s) should redirect back to the GOV.UK start page (%s)" % (bare_domain, correct_location)
 
 
 def check_listening_on_http(domain):
     try:
-        url = urllib2.urlopen("http://%s/" % domain, timeout=2)
+        url = urllib2.urlopen("http://%s/" % domain, timeout=1)
         location = url.geturl()
         ssl_location = "https://%s/" % domain
         if location == ssl_location:
-            return format_output(True, "The service should only respond to HTTPS requests (Service redirects HTTP to HTTPS)")
+            return True, "The service should only respond to HTTPS requests (Service redirects HTTP to HTTPS)"
         else:
-            return format_output(False, "The service responds to HTTP requests and does not redirect them to HTTPS")
+            return False, "The service responds to HTTP requests and does not redirect them to HTTPS"
     except IOError:
-        return format_output(True, "The service should only respond to HTTPS requests (Service does not listen on HTTP)")
+        return True, "The service should only respond to HTTPS requests (Service does not listen on HTTP)"
 
 
 def check_for_HSTS_header(link):
@@ -136,11 +105,11 @@ def check_for_HSTS_header(link):
         url = urllib2.urlopen(link)
         headers = header_dict(url.info().headers)
         if 'strict-transport-security' in headers.keys():
-            return format_output(True, "The service should set a Strict-Transport-Security (HSTS) header")
+            return True, "The service should set a Strict-Transport-Security (HSTS) header"
         else:
-            return format_output(False, "The service should set a Strict-Transport-Security (HSTS) header")
+            return False, "The service should set a Strict-Transport-Security (HSTS) header"
     except urllib2.HTTPError as e:
-        return format_output(False, "Error: %s" % e)
+        return False, "Error: %s" % e
 
 
 def check_for_robots_txt(domain):
@@ -148,11 +117,11 @@ def check_for_robots_txt(domain):
         url = urllib2.urlopen("https://%s/robots.txt" % domain)
         headers = header_dict(url.info().headers)
         if headers['content-type'] == "text/plain":
-            return format_output(True, "The service should have a robots.txt file to avoid appearing in search engines")
+            return True, "The service should have a robots.txt file to avoid appearing in search engines"
         else:
-            return format_output(False, "The service has a robots.txt file, but it is not served as 'text/plain' (%s)" % headers['content-type'])
+            return False, "The service has a robots.txt file, but it is not served as 'text/plain' (%s)" % headers['content-type']
     except urllib2.HTTPError as e:
-        return format_output(False, "The service should have a robots.txt file to avoid appearing in search engines: %s" % e)
+        return False, "The service should have a robots.txt file to avoid appearing in search engines: %s" % e
 
 
 def check_cookies(link):
@@ -179,12 +148,38 @@ def check_cookies(link):
                 message += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
                 failed = True
     if failed:
-        return format_output(False, message)
+        return False, message
     else:
-        return format_output(True, "Cookies are Secure, HttpOnly and scoped to the service domain")
+        return True, "Cookies are Secure, HttpOnly and scoped to the service domain"
+
+
+# Main logic process
+def service_check(slug):
+
+    output = ""
+    result, link = find_link_from_slug(slug)
+    if result:
+        output += format_output(result, "Start page (https://www.gov.uk%s) links to the service (%s)" % (slug, link))
+        result, domain = extract_service_domain_from_link(link)
+        if result:
+            check1 = gevent.spawn(check_bare_ssl_domain_redirects_to_slug, domain, slug)
+            check2 = gevent.spawn(check_listening_on_http, domain)
+            check3 = gevent.spawn(check_for_HSTS_header,link)
+            check4 = gevent.spawn(check_for_robots_txt,domain)
+            check5 = gevent.spawn(check_cookies,link)
+            checks = [check1, check2, check3, check4, check5]
+            gevent.joinall(checks)
+            for check in checks:
+                status, message = check.value
+                output += "%s\n" % format_output(status, message)
+        else:
+            output += format_output(result, domain)
+    else:
+        output += format_output(result, link)
+    return render_template('service_check.html', output=output)
 
 
 # launch
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=True)
