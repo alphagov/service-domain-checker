@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import datetime
 import gevent
 import os
 import re
@@ -7,7 +8,7 @@ import urlparse
 
 from gevent import monkey; monkey.patch_all()
 
-from flask import Flask, render_template, send_from_directory, request
+from flask import Flask, render_template, send_from_directory, request, make_response
 from lxml.html import parse
 
 # initialization
@@ -20,22 +21,22 @@ app.config.update(
 # controllers
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'), 'ico/favicon.ico')
+    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), 'ico/favicon.ico'),30240)
 
 
 @app.route('/css/<filename>')
 def css(filename):
-    return send_from_directory(os.path.join(app.root_path, 'static'), "css/%s" % filename)
+    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), "css/%s" % filename),30240)
 
 
 @app.route('/js/<filename>')
 def js(filename):
-    return send_from_directory(os.path.join(app.root_path, 'static'), "js/%s" % filename)
+    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), "js/%s" % filename),30240)
 
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('404.html'), 404
+    return add_cache_headers(render_template('404.html'),30240), 404
 
 
 @app.route("/")
@@ -43,18 +44,17 @@ def index():
     value = request.args.get('slug')
     if value == None:
         value = ""
-    return render_template('index.html', value=value)
-
+    return add_cache_headers(render_template('index.html', value=value),60)
 
 
 @app.route("/about")
 def about():
-    return render_template('about.html')
+    return add_cache_headers(render_template('about.html'),30240)
 
 
 @app.route("/slug/<path:slug>")
 def check(slug):
-    return service_check("/%s" % slug)
+    return add_cache_headers(service_check("/%s" % slug),5)
 
 
 # Helper functions
@@ -92,6 +92,15 @@ def header_dict(headers):
 
 def format_output(status, title, description):
         return render_template('check.html', status=status, title=title, description=description)
+
+
+def add_cache_headers(response, minutes):
+    response = make_response(response)
+    then = datetime.datetime.utcnow() + datetime.timedelta(minutes=minutes)
+    rfc822 = then.strftime("%a, %d %b %Y %H:%M:%S +0000")
+    response.headers.add('Expires', rfc822)
+    response.headers.add('Cache-Control', 'public,max-age=%d' % int(60*minutes))
+    return response
 
 
 # Service checks
