@@ -15,9 +15,9 @@ from lxml.html import parse
 # initialization
 app = Flask(__name__)
 
-app.config.update(
-    DEBUG=True,
-)
+#app.config.update(
+#    DEBUG=True,
+#)
 
 # controllers
 
