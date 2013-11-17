@@ -6,7 +6,8 @@ import re
 import urllib2
 import urlparse
 
-from gevent import monkey; monkey.patch_all()
+from gevent import monkey
+monkey.patch_all()
 
 from flask import Flask, render_template, send_from_directory, request, make_response
 from lxml.html import parse
@@ -15,28 +16,30 @@ from lxml.html import parse
 app = Flask(__name__)
 
 app.config.update(
-    DEBUG = True,
+    DEBUG=True,
 )
 
 # controllers
+
+
 @app.route('/favicon.ico')
 def favicon():
-    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), 'ico/favicon.ico'),30240)
+    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), 'ico/favicon.ico'), 30240)
 
 
 @app.route('/css/<filename>')
 def css(filename):
-    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), "css/%s" % filename),30240)
+    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), "css/%s" % filename), 30240)
 
 
 @app.route('/js/<filename>')
 def js(filename):
-    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), "js/%s" % filename),30240)
+    return add_cache_headers(send_from_directory(os.path.join(app.root_path, 'static'), "js/%s" % filename), 30240)
 
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return add_cache_headers(render_template('404.html'),30240), 404
+    return add_cache_headers(render_template('404.html'), 30240), 404
 
 
 @app.route("/")
@@ -44,23 +47,23 @@ def index():
     value = request.args.get('slug')
     if value == None:
         value = ""
-    return add_cache_headers(render_template('index.html', value=value),60)
+    return add_cache_headers(render_template('index.html', value=value), 60)
 
 
 @app.route("/about")
 def about():
-    return add_cache_headers(render_template('about.html'),30240)
+    return add_cache_headers(render_template('about.html'), 30240)
 
 
 @app.route("/slug/<path:slug>")
 def check(slug):
-    return add_cache_headers(service_check("/%s" % slug),5)
+    return add_cache_headers(service_check("/%s" % slug), 5)
 
 
 # Helper functions
 def extract_service_domain_from_link(link):
     domain = urlparse.urlparse(link).netloc
-    if re.match('^.*\.service\.gov\.uk$',domain):
+    if re.match('^.*\.service\.gov\.uk$', domain):
         return True, domain
     else:
         return False, "The link is not to something on the service.gov.uk domain"
@@ -99,7 +102,8 @@ def add_cache_headers(response, minutes):
     then = datetime.datetime.utcnow() + datetime.timedelta(minutes=minutes)
     rfc822 = then.strftime("%a, %d %b %Y %H:%M:%S +0000")
     response.headers.add('Expires', rfc822)
-    response.headers.add('Cache-Control', 'public,max-age=%d' % int(60*minutes))
+    response.headers.add(
+        'Cache-Control', 'public,max-age=%d' % int(60 * minutes))
     return response
 
 
@@ -241,12 +245,13 @@ def service_check(slug):
                                 """ % (slug, slug, link, link))
         result, domain = extract_service_domain_from_link(link)
         if result:
-            check1 = gevent.spawn(check_bare_ssl_domain_redirects_to_slug, domain, slug)
+            check1 = gevent.spawn(
+                check_bare_ssl_domain_redirects_to_slug, domain, slug)
             check2 = gevent.spawn(check_listening_on_http, domain)
             check3 = gevent.spawn(check_for_www, domain)
-            check4 = gevent.spawn(check_for_HSTS_header,link)
-            check5 = gevent.spawn(check_for_robots_txt,domain)
-            check6 = gevent.spawn(check_cookies,link)
+            check4 = gevent.spawn(check_for_HSTS_header, link)
+            check5 = gevent.spawn(check_for_robots_txt, domain)
+            check6 = gevent.spawn(check_cookies, link)
             checks = [check1, check2, check3, check4, check5, check6]
             gevent.joinall(checks)
             for check in checks:
@@ -266,8 +271,6 @@ def service_check(slug):
                                 but either the page does not exist, or I cannot find a 'Start now' link on this
                                 page pointing to a service.""" % (slug, slug))
     return render_template('service_check.html', output=output, link=link)
-
-
 
 
 # launch
