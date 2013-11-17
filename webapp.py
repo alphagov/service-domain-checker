@@ -245,9 +245,8 @@ def service_check(slug):
                 output += "%s\n" % format_output(status, message, description)
         else:
             output += format_output(result,
-                                    "The GOV.UK start page should link to the service",
-                                    """All transactions should start on GOV.UK with a transaction start page.
-                                    You supplied the start page of <a href='https://www.gov.uk%s'>https://www.gov.uk%s</a>
+                                    "The GOV.UK start page should link to service on a service.gov.uk domain",
+                                    """You supplied the start page of <a href='https://www.gov.uk%s'>https://www.gov.uk%s</a>
                                     which appears to have a 'Start now' button, but it does not link to something on the
                                     service.gov.uk domain as it points to <a href='%s'>%s</a>.""" % (slug, slug, link, link))
     else:
