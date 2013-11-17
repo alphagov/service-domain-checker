@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %} - About{% endblock %}
+{% block content %}
+<h1>Service Manual compliance for service.gov.uk domains</h1>
+<p>
+The <a href="https://www.gov.uk/service-manual">Government Service Design Manual</a> describes in detail some
+standard that transactional sites on the <code>service.gov.uk</code> domain must satisfy.
+The requirements are <a href="https://www.gov.uk/service-manual/operations/operating-servicegovuk-subdomains.html">
+described in detail</a>, however it is difficult to assess immediately if a given transactional site satisfies the
+requirements.
+</p>
+<p>
+This simple application takes a transaction start page on <strong>GOV.UK</strong> and determines whether the transaction
+it links to satisfies the individual requirements of the Service Manual.
+</p>
+{% endblock %}

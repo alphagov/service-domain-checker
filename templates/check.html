@@ -1,8 +1,16 @@
 <tr>
     {% if status %}
-    <td style='background-color: green; color: green; text-align: center;'>PASS</td>
+    <td width=100px ><button type="button" class="btn btn-success btn-block">PASS</button></td>
     {% else %}
-    <td style='background-color: red; color: red; text-align: center;'>PASS</td>
+    <td width=100px ><button type="button" class="btn btn-danger btn-block">FAIL</button></td>
     {% endif %}
-    <td>{{ message }}</td>
+    <td>
+        <strong>{{ title|safe }}</strong>
+    </td>
+</tr>
+<tr>
+    <td>&nbsp;</td>
+    <td>
+        {{ description|safe }}
+    </td>
 </tr>

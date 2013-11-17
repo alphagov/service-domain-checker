@@ -7,7 +7,7 @@ import urlparse
 
 from gevent import monkey; monkey.patch_all()
 
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, render_template, send_from_directory, request
 from lxml.html import parse
 
 # initialization
@@ -23,6 +23,16 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'ico/favicon.ico')
 
 
+@app.route('/css/<filename>')
+def css(filename):
+    return send_from_directory(os.path.join(app.root_path, 'static'), "css/%s" % filename)
+
+
+@app.route('/js/<filename>')
+def js(filename):
+    return send_from_directory(os.path.join(app.root_path, 'static'), "js/%s" % filename)
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
@@ -30,8 +40,16 @@ def page_not_found(e):
 
 @app.route("/")
 def index():
-    slug = '/lasting-power-of-attorney'
-    return service_check(slug)
+    value = request.args.get('slug')
+    if value == None:
+        value = ""
+    return render_template('index.html', value=value)
+
+
+
+@app.route("/about")
+def about():
+    return render_template('about.html')
 
 
 @app.route("/slug/<path:slug>")
@@ -49,17 +67,19 @@ def extract_service_domain_from_link(link):
 
 
 def find_link_from_slug(govuk_slug):
-
-    service_link = None
-    html = urllib2.urlopen("https://www.gov.uk%s" % govuk_slug)
-    doc = parse(html).getroot()
-    for link in doc.cssselect('a'):
-        if link.text_content() == 'Start now':
-            service_link = link.get('href')
-    if service_link != None:
-        return True, service_link
-    else:
-        return False, "Could not find 'Start now' link on https://www.gov.uk%s" % govuk_slug
+    try:
+        service_link = None
+        html = urllib2.urlopen("https://www.gov.uk%s" % govuk_slug)
+        doc = parse(html).getroot()
+        for link in doc.cssselect('a'):
+            if link.text_content() == 'Start now':
+                service_link = link.get('href')
+        if service_link != None:
+            return True, service_link
+        else:
+            return False, "Could not find 'Start now' link on https://www.gov.uk%s" % govuk_slug
+    except IOError:
+        return False, "https://www.gov.uk%s" % govuk_slug
 
 
 def header_dict(headers):
@@ -70,8 +90,8 @@ def header_dict(headers):
     return dict
 
 
-def format_output(status, message):
-        return render_template('check.html', status=status, message=message)
+def format_output(status, title, description):
+        return render_template('check.html', status=status, title=title, description=description)
 
 
 # Service checks
@@ -81,52 +101,97 @@ def check_bare_ssl_domain_redirects_to_slug(domain, slug):
     url = urllib2.urlopen(bare_domain)
     location = url.geturl()
     correct_location = "https://www.gov.uk%s" % slug
+    check_title = "The bare service domain should redirect back to the GOV.UK start page"
+    check_description = """
+    In order to make sure that all transactions begin and end on GOV.UK, it is important that
+    the bare domain (<a href='%s'>%s</a>) redirects back to the GOV.UK start page (<a href='%s'>%s</a>), so that if users are
+    typing the URL from memory, they get a consistent user experience and their browser does
+    not cache the wrong entry page.
+    """ % (bare_domain, bare_domain, correct_location, correct_location)
     if location == correct_location:
-        return True, "The bare service domain (%s) should redirect back to the GOV.UK start page (%s)" % (bare_domain, correct_location)
+        return True, check_title, check_description
     else:
-        return False, "The bare service domain (%s) should redirect back to the GOV.UK start page (%s)" % (bare_domain, correct_location)
+        return False, check_title, check_description
 
 
 def check_listening_on_http(domain):
+    check_title = "The service should enforce SSL"
+    check_description = """
+    Users must have confidence that any information they are submitting to a service, including
+    pages they visit, is not available to a 3rd-party. In order to enforce this, the service should
+    either reject non-SSL connections, or should immediately redirect them to secured connection via SSL.
+    """
     try:
         url = urllib2.urlopen("http://%s/" % domain, timeout=1)
         location = url.geturl()
         ssl_location = "https://%s/" % domain
         if location == ssl_location:
-            return True, "The service should only respond to HTTPS requests (Service redirects HTTP to HTTPS)"
+            return True, "%s (Service redirects HTTP to HTTPS)" % check_title, check_description
         else:
-            return False, "The service responds to HTTP requests and does not redirect them to HTTPS"
+            return False, check_title, check_description
     except IOError:
-        return True, "The service should only respond to HTTPS requests (Service does not listen on HTTP)"
+        return True, "%s (Service does not listen on HTTP)" % check_title, check_description
 
 
 def check_for_HSTS_header(link):
+
+    check_title = "The service should set a Strict-Transport-Security (HSTS) header"
+    check_description = """
+    To reduce the chance that traffic for a user can be intercepted, the service
+    should notify the browser that in future it should only use secure connections.
+    It can do this by setting an HTTP Header called 'Strict-Transport-Security'.
+    """
     try:
         url = urllib2.urlopen(link)
         headers = header_dict(url.info().headers)
         if 'strict-transport-security' in headers.keys():
-            return True, "The service should set a Strict-Transport-Security (HSTS) header"
+            return True, check_title, check_description
         else:
-            return False, "The service should set a Strict-Transport-Security (HSTS) header"
+            return False, check_title, check_description
     except urllib2.HTTPError as e:
-        return False, "Error: %s" % e
+        return False, check_title, "Error: %s" % e
+
+
+def check_for_www(domain):
+    check_title = "The service domain format should be www.{service}.service.gov.uk"
+    check_description = """
+    The Service Manual states that Users must interact with a single domain and that it
+    will be www.{service}.service.gov.uk. It is permissible to create extra domains for
+    example for Content Delivery Networks, Assets or Administration, however the user-facing
+    domain should be prefixed by www.
+    """
+    if re.match('^www\.[^.]+\.service\.gov\.uk$', domain):
+        return True, check_title, check_description
+    else:
+        return False, check_title, check_description
 
 
 def check_for_robots_txt(domain):
+    check_title = "The service should have a robots.txt file"
+    check_description = """
+    Every service hosted on a service.gov.uk domain must have a robots.txt file asking search engines
+    not to index any part of the site. More details can be found on the <a href='http://www.robotstxt.org/faq/prevent.html'>Web Robots pages</a>
+    """
     try:
         url = urllib2.urlopen("https://%s/robots.txt" % domain)
         headers = header_dict(url.info().headers)
         if headers['content-type'] == "text/plain":
-            return True, "The service should have a robots.txt file to avoid appearing in search engines"
+            return True, check_title, check_description
         else:
-            return False, "The service has a robots.txt file, but it is not served as 'text/plain' (%s)" % headers['content-type']
+            return False, check_title, "The robots.txt file exists, but is %s rather than text/plain." % headers['content-type']
     except urllib2.HTTPError as e:
-        return False, "The service should have a robots.txt file to avoid appearing in search engines: %s" % e
+        return False, check_title, "Could not find robots.txt (Error: %s)" % e
 
 
 def check_cookies(link):
     failed = False
-    message = "Cookies should be Secure, HttpOnly and scoped to the service domain<br />"
+    check_title = "Cookies should be Secure, HttpOnly and scoped to the service domain"
+    check_description = """
+    Cookies used on www.{service}.service.gov.uk must be scoped to the originating domain only.
+    Cookies must not be scoped to the domain servicename.service.gov.uk. Cookies must be sent with
+    the <code>Secure</code> attribute and should, where appropriate, be sent with the <code>HttpOnly</code>
+    attribute. These flags <a href='https://en.wikipedia.org/wiki/HTTP_cookie#Secure_and_HttpOnly'>provide additional assurances about how cookies will be handled by browsers.</a>
+    """
     result, domain = extract_service_domain_from_link(link)
     cookie_domain = "domain=" + domain
     url = urllib2.urlopen(link)
@@ -136,21 +201,21 @@ def check_cookies(link):
         if key.lower() == 'set-cookie':
             cookie_settings = value.lower().split('; ')
             if 'httponly' not in cookie_settings:
-                message += "HttpOnly is not set<br /><"
-                message += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
+                check_description += "<br /><br />HttpOnly is not set<br /><"
+                check_description += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
                 failed = True
             if 'secure' not in cookie_settings:
-                message += "Secure is not set<br />"
-                message += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
+                check_description += "<br /><br />Secure is not set<br />"
+                check_description += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
                 failed = True
             if cookie_domain not in cookie_settings:
-                message += "Cookie not scoped to domain=%s<br />" % domain
-                message += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
+                check_description += "<br /><br />Cookie not scoped to domain=%s<br />" % domain
+                check_description += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
                 failed = True
     if failed:
-        return False, message
+        return False, check_title, check_description
     else:
-        return True, "Cookies are Secure, HttpOnly and scoped to the service domain"
+        return True, check_title, check_description
 
 
 # Main logic process
@@ -159,24 +224,42 @@ def service_check(slug):
     output = ""
     result, link = find_link_from_slug(slug)
     if result:
-        output += format_output(result, "Start page (https://www.gov.uk%s) links to the service (%s)" % (slug, link))
+        output += format_output(result,
+                                "The GOV.UK start page should link to the service",
+                                """All transactions should start on GOV.UK with a transaction start page.
+                                You supplied the start page of <a href='https://www.gov.uk%s'>https://www.gov.uk%s</a>
+                                which appears to link to a service: <a href='%s'>%s</a>
+                                """ % (slug, slug, link, link))
         result, domain = extract_service_domain_from_link(link)
         if result:
             check1 = gevent.spawn(check_bare_ssl_domain_redirects_to_slug, domain, slug)
             check2 = gevent.spawn(check_listening_on_http, domain)
-            check3 = gevent.spawn(check_for_HSTS_header,link)
-            check4 = gevent.spawn(check_for_robots_txt,domain)
-            check5 = gevent.spawn(check_cookies,link)
-            checks = [check1, check2, check3, check4, check5]
+            check3 = gevent.spawn(check_for_www, domain)
+            check4 = gevent.spawn(check_for_HSTS_header,link)
+            check5 = gevent.spawn(check_for_robots_txt,domain)
+            check6 = gevent.spawn(check_cookies,link)
+            checks = [check1, check2, check3, check4, check5, check6]
             gevent.joinall(checks)
             for check in checks:
-                status, message = check.value
-                output += "%s\n" % format_output(status, message)
+                status, message, description = check.value
+                output += "%s\n" % format_output(status, message, description)
         else:
-            output += format_output(result, domain)
+            output += format_output(result,
+                                    "The GOV.UK start page should link to the service",
+                                    """All transactions should start on GOV.UK with a transaction start page.
+                                    You supplied the start page of <a href='https://www.gov.uk%s'>https://www.gov.uk%s</a>
+                                    which appears to have a 'Start now' button, but it does not link to something on the
+                                    service.gov.uk domain as it points to <a href='%s'>%s</a>.""" % (slug, slug, link, link))
     else:
-        output += format_output(result, link)
-    return render_template('service_check.html', output=output)
+        output += format_output(result,
+                                "The GOV.UK start page should link to the service",
+                                """All transactions should start on GOV.UK with a transaction start page.
+                                You supplied the start page of <a href='https://www.gov.uk%s'>https://www.gov.uk%s</a>,
+                                but either the page does not exist, or I cannot find a 'Start now' link on this
+                                page pointing to a service.""" % (slug, slug))
+    return render_template('service_check.html', output=output, link=link)
+
+
 
 
 # launch

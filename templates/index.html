@@ -1,5 +1,24 @@
 {% extends "base.html" %}
 {% block title %} - Home{% endblock %}
 {% block content %}
-     <p>Nothing to see here...</p>
+<p>
+This application will follow a 'Start now' page on GOV.UK to the transaction. If it is using a
+service.gov.uk domain, then various checks will be run against the service, to check compliance
+with the <a href="https://www.gov.uk/service-manual/operations/operating-servicegovuk-subdomains.html">guidance on operating service.gov.uk domains</a>.
+</p>
+<p>&nbsp;</p>
+<form id="searchForm" class="form-inline" role="form">
+<div class="form-group">
+    <label class="control-label" for="slug">Where do you want to start on GOV.UK?</label>
+    <div class="input-group">
+      <span class="input-group-addon">https://www.gov.uk/</span>
+      <input id="slug" name="slug" class="form-control col-sm-2" placeholder="start-page" required="" type="text" value="{{ value }}">
+      <span class="input-group-btn">
+          <button id="submit1" name="submit1" class="btn btn-primary">Check</button>
+      </span>
+    </div>
+    <p class="help-block">Please enter the start page on GOV.UK for your transaction, for example <a href="/?slug=lasting-power-of-attorney">lasting-power-of-attorney</a></p>
+</div>
+</form>
+<div id="resultsDiv"></div>
 {% endblock %}
