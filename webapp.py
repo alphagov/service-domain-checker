@@ -45,7 +45,7 @@ def page_not_found(e):
 @app.route("/")
 def index():
     value = request.args.get('slug')
-    if value == None:
+    if value is None:
         value = ""
     return add_cache_headers(render_template('index.html', value=value), 60)
 
@@ -77,7 +77,7 @@ def find_link_from_slug(govuk_slug):
         for link in doc.cssselect('a'):
             if link.text_content() == 'Start now':
                 service_link = link.get('href')
-        if service_link != None:
+        if service_link is not None:
             return True, service_link
         else:
             return False, "Could not find 'Start now' link on https://www.gov.uk%s" % govuk_slug
@@ -203,7 +203,8 @@ def check_cookies(link):
     Cookies used on www.{service}.service.gov.uk must be scoped to the originating domain only.
     Cookies must not be scoped to the domain servicename.service.gov.uk. Cookies must be sent with
     the <code>Secure</code> attribute and should, where appropriate, be sent with the <code>HttpOnly</code>
-    attribute. These flags <a href='https://en.wikipedia.org/wiki/HTTP_cookie#Secure_and_HttpOnly'>provide additional assurances about how cookies will be handled by browsers.</a>
+    attribute. These flags <a href='https://en.wikipedia.org/wiki/HTTP_cookie#Secure_and_HttpOnly'>provide additional assurances
+    about how cookies will be handled by browsers.</a>
     """
     result, domain = extract_service_domain_from_link(link)
     cookie_domain = "domain=" + domain
