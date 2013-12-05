@@ -3,6 +3,9 @@
     This is the conformance report for <a href="{{ link }}">{{ link }}</a> against the recommendations of the Service Manual
     for <a href="https://www.gov.uk/service-manual/operations/operating-servicegovuk-subdomains.html">operating service.gov.uk domains</a>.
     </p>
+    <p>
+    Generated on {{ checked_at|datetime(format='%d/%m/%Y') }} at {{ checked_at|datetime(format='%H:%M') }}.
+    </p>
     <table class='table table-striped'>
         {{ output|safe }}
     </table>
