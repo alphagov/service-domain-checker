@@ -97,6 +97,11 @@ def format_output(status, title, description):
         return render_template('check.html', status=status, title=title, description=description)
 
 
+def datetime_filter(datetime, format='%d/%m/%Y %H:%M'):
+    return datetime.strftime(format)
+app.jinja_env.filters['datetime'] = datetime_filter
+
+
 def add_cache_headers(response, minutes):
     response = make_response(response)
     then = datetime.datetime.utcnow() + datetime.timedelta(minutes=minutes)
@@ -271,7 +276,7 @@ def service_check(slug):
                                 You supplied the start page of <a href='https://www.gov.uk%s'>https://www.gov.uk%s</a>,
                                 but either the page does not exist, or I cannot find a 'Start now' link on this
                                 page pointing to a service.""" % (slug, slug))
-    return render_template('service_check.html', output=output, link=link)
+    return render_template('service_check.html', output=output, link=link, checked_at=datetime.datetime.now())
 
 
 # launch
