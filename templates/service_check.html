@@ -4,7 +4,7 @@
     for <a href="https://www.gov.uk/service-manual/operations/operating-servicegovuk-subdomains.html">operating service.gov.uk domains</a>.
     </p>
     <p>
-    Generated on {{ checked_at|datetime(format='%d/%m/%Y') }} at {{ checked_at|datetime(format='%H:%M') }}.
+    Generated on {{ checked_at|datetime(format_string='%d/%m/%Y') }} at {{ checked_at|datetime(format_string='%H:%M') }}.
     </p>
     <table class='table table-striped'>
         {{ output|safe }}

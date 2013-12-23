@@ -253,14 +253,14 @@ def service_check(slug):
                                 """ % (slug, slug, link, link))
         result, domain = extract_service_domain_from_link(link)
         if result:
-            check1 = gevent.spawn(
-                check_bare_ssl_domain_redirects_to_slug, domain, slug)
-            check2 = gevent.spawn(check_listening_on_http, domain)
-            check3 = gevent.spawn(check_for_www, domain)
-            check4 = gevent.spawn(check_for_HSTS_header, link)
-            check5 = gevent.spawn(check_for_robots_txt, domain)
-            check6 = gevent.spawn(check_cookies, link)
-            checks = [check1, check2, check3, check4, check5, check6]
+            checks = [
+                gevent.spawn(check_bare_ssl_domain_redirects_to_slug, domain, slug),
+                gevent.spawn(check_listening_on_http, domain),
+                gevent.spawn(check_for_www, domain),
+                gevent.spawn(check_for_HSTS_header, link),
+                gevent.spawn(check_for_robots_txt, domain),
+                gevent.spawn(check_cookies, link)
+            ]
             gevent.joinall(checks)
             for check in checks:
                 status, message, description = check.value
