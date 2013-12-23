@@ -38,7 +38,7 @@ def js(filename):
 
 
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found():
     return add_cache_headers(render_template('404.html'), 30240), 404
 
 
@@ -86,19 +86,20 @@ def find_link_from_slug(govuk_slug):
 
 
 def header_dict(headers):
-    dict = {}
+    dikt = {}
     for header in headers:
         key, value = header.split(': ', 1)
-        dict[key.lower()] = value.rstrip()
-    return dict
+        dikt[key.lower()] = value.rstrip()
+    return dikt
 
 
 def format_output(status, title, description):
-        return render_template('check.html', status=status, title=title, description=description)
+    return render_template('check.html', status=status, title=title, description=description)
 
 
-def datetime_filter(datetime, format='%d/%m/%Y %H:%M'):
-    return datetime.strftime(format)
+def datetime_filter(datetime, format_string='%d/%m/%Y %H:%M'):
+    return datetime.strftime(format_string)
+
 app.jinja_env.filters['datetime'] = datetime_filter
 
 
@@ -211,7 +212,7 @@ def check_cookies(link):
     attribute. These flags <a href='https://en.wikipedia.org/wiki/HTTP_cookie#Secure_and_HttpOnly'>provide additional assurances
     about how cookies will be handled by browsers.</a>
     """
-    result, domain = extract_service_domain_from_link(link)
+    domain = extract_service_domain_from_link(link)[1]
     cookie_domain = "domain=" + domain
     url = urllib2.urlopen(link)
     headers = url.info().headers
@@ -239,6 +240,7 @@ def check_cookies(link):
 
 # Main logic process
 def service_check(slug):
+
 
     output = ""
     result, link = find_link_from_slug(slug)
