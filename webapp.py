@@ -79,11 +79,10 @@ def find_link_from_slug(govuk_slug):
                 service_link = link.get('href')
         if service_link is not None:
             return True, service_link
-        else:
-            for form in doc.cssselect('form.get-started'):
-                service_link = form.get('action')
-            if service_link is not None:
-                return True, service_link
+        for form in doc.cssselect('form.get-started'):
+            service_link = form.get('action')
+        if service_link is not None:
+            return True, service_link
         return False, "Could not find 'Start now' link on https://www.gov.uk%s" % govuk_slug
     except IOError:
         return False, "https://www.gov.uk%s" % govuk_slug
