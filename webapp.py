@@ -197,7 +197,7 @@ def check_for_robots_txt(domain):
     try:
         url = urllib2.urlopen("https://%s/robots.txt" % domain)
         headers = header_dict(url.info().headers)
-        if headers['content-type'] == "text/plain":
+        if headers['content-type'].startswith("text/plain"):
             return True, check_title, check_description
         else:
             return False, check_title, "The robots.txt file exists, but is %s rather than text/plain." % headers['content-type']
