@@ -75,7 +75,7 @@ def find_link_from_slug(govuk_slug):
         html = urllib2.urlopen("https://www.gov.uk%s" % govuk_slug)
         doc = parse(html).getroot()
         for link in doc.cssselect('.get-started a'):
-            if link.text_content() == 'Start now':
+            if link.text_content() == 'Start now' or link.text_content() == 'Apply now':
                 service_link = link.get('href')
         if service_link is not None:
             return True, service_link
