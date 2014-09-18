@@ -145,9 +145,8 @@ def check_listening_on_http(domain):
     """
     try:
         url = urllib2.urlopen("http://%s/" % domain, timeout=1)
-        location = url.geturl()
-        ssl_location = "https://%s/" % domain
-        if location == ssl_location:
+        parsed_url = urlparse.urlparse(url.geturl())
+        if parsed_url.scheme == 'https':
             return True, "%s (Service redirects HTTP to HTTPS)" % check_title, check_description
         else:
             return False, check_title, check_description
