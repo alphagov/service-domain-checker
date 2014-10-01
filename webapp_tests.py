@@ -21,9 +21,9 @@ class WebappTestExtractingServiceDomainsFromLinks(unittest.TestCase):
 class WebappTestExtractingServiceLinkFromSlug(unittest.TestCase):
 
     def test_find_link_from_slug(self):
-        status, link = webapp.find_link_from_slug('/lasting-power-of-attorney')
+        status, link = webapp.find_link_from_slug('/power-of-attorney/make-lasting-power')
         assert True == status
-        assert "https://lastingpowerofattorney.service.gov.uk/" == link
+        assert "https://www.lastingpowerofattorney.service.gov.uk/home" == link
 
     def test_fail_to_find_link_from_slug(self):
         status = webapp.find_link_from_slug('/bank-holidays')[0]
