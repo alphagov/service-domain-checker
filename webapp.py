@@ -215,7 +215,8 @@ def check_cookies(link):
     about how cookies will be handled by browsers.</a>
     """
     domain = extract_service_domain_from_link(link)[1]
-    cookie_domain = "domain=" + domain
+    cookie_header = "domain="
+    cookie_domain = cookie_header + domain
     url = urllib2.urlopen(link)
     headers = url.info().headers
     for header in headers:
@@ -230,7 +231,7 @@ def check_cookies(link):
                 check_description += "<br /><br />Secure is not set<br />"
                 check_description += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
                 failed = True
-            if cookie_domain not in cookie_settings:
+            if cookie_header in cookie_settings and cookie_domain not in cookie_settings:
                 check_description += "<br /><br />Cookie not scoped to domain=%s<br />" % domain
                 check_description += "&nbsp;&nbsp;Set-Cookie: %s<br />" % value
                 failed = True
